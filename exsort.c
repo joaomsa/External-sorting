@@ -40,39 +40,60 @@ void swap_entries(entry *a, entry *b){
     *b = tmp;
 }
 
-int quicksort_partition(entry* entries, int pivot, int start, int end){
+int sort_quick_partition(entry* entries, int pivot, int start, int end){
     int i, j;
     swap_entries(&entries[pivot], &entries[end]);
     j = start;
-    for (i = start; i < end; i++){
-        if (entries[i].views > entries[pivot].views){
+    for (i = start; i < end; i++)
+        if (entries[i].views > entries[pivot].views || (
+                    entries[i].views == entries[pivot].views && 
+                    strcmp(entries[i].url, entries[pivot].url) == -1
+                    )
+           ){
             swap_entries(&entries[i], &entries[j]);
             j++;
         }
-        if (entries[i].views == entries[pivot].views) 
-            if (strcmp(entries[i].url, entries[pivot].url) == -1){
-                printf("%i" , strcmp(entries[i].url, entries[pivot].url));
-                swap_entries(&entries[i], &entries[j]);
-                j++;
-            }
-    }
     swap_entries(&entries[j], &entries[end]);
     return j;
 }
 
-void quicksort_aux(entry* entries, int start, int end){
+void sort_quick_aux(entry* entries, int start, int end){
     int pivot;
     if (start < end){
         /* Improve pivot */
         pivot = end;
-        pivot = quicksort_partition(entries, pivot, start, end);
-        quicksort_aux(entries, start, pivot - 1);
-        quicksort_aux(entries, pivot + 1, end);
+        pivot = sort_quick_partition(entries, pivot, start, end);
+        sort_quick_aux(entries, start, pivot - 1);
+        sort_quick_aux(entries, pivot + 1, end);
     }
 }
 
-void quicksort(entry* entries, int entriesNum){
-    quicksort_aux(entries, 0, entriesNum - 1);
+void sort_quick(entry* entries, int entriesNum){
+    sort_quick_aux(entries, 0, entriesNum - 1);
+}
+
+void sort_shell(entry* entries, int entriesNum){
+    int i, j, h;
+    entry tmp;
+    for (h = 1; h < entriesNum; h = h * 3 + 1);
+    while (h > 0){
+        h = (h - 1) / 3;
+        for (i = h; i < entriesNum; i++){
+            tmp = entries[i];
+            j = i;
+            while (j >= h && (
+                        entries[j - h].views < tmp.views || (
+                            entries[j - h].views == tmp.views &&
+                            strcmp(entries[j - h].url, tmp.url) == 1
+                            )
+                        )
+                  ){
+                entries[j] = entries[j - h];
+                j -= h;
+            }
+            entries[j] = tmp;
+        }
+    }
 }
 
 void round_qsort(round *roundUnsrt){
@@ -92,7 +113,7 @@ void round_qsort(round *roundUnsrt){
         }
     }
 
-    quicksort(entriesDec, entriesNum);
+    sort_quick(entriesDec, entriesNum);
     int i;
 
     for (i = 0; i < entriesNum; i++)
