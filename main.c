@@ -1,31 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 #include "exsort.c"
 #define INPUT "test.txt"
 #define OUTPUT empty
-#define ENTRIESMAX 2
+#define ENTRIESMAX 4
+#define ENTRYLEN 103
 
 int main(){
-    FILE *unsortedInput;
-    unsortedInput = fopen (INPUT, "r");
-    assert(unsortedInput != NULL);
+    FILE *input;
+    input = fopen (INPUT, "r");
+    assert (input != NULL);
 
-    unsigned long inputLen;
-    char *unsortedInputStr;
-    inputLen = file_len(unsortedInput);
-    unsortedInputStr = (char*) malloc (inputLen * sizeof(char));
-    fread(unsortedInputStr, inputLen, sizeof(char), unsortedInput);
-
-    int entriesTotal
-    entriesTotal = str_numchar(unsortedInputStr, '\n');
+    int roundNum = file_rounds_split(input, ENTRIESMAX, ENTRYLEN);
+    /* remove later */
+    while(roundNum)
+        roundNum = 0;
 
     /*
-    char *url, *views;
-    url = strtok(unsortedInputStr, " \n");
-    views = strtok(NULL, " \n");
-    printf("%s %i", url, atoi(views));
-    */
+       int entriesTotal
+       entriesTotal = str_numchar(unsortedInputStr, '\n');
+
+       char *url, *views;
+       url = strtok(unsortedInputStr, " \n");
+       views = strtok(NULL, " \n");
+       printf("%s %i", url, atoi(views));
+       */
+
+    /* intersperse 
+     * Write to final file
+     * Delete rounds */
     return 0;
 }
