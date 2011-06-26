@@ -33,108 +33,111 @@ unsigned long str_numchar(char *str, char key){
             occurrences++;
     return occurrences;
 }
-void swap_entries(entry *a, entry *b){
+
+/* Swap the contents of two entries */
+void swap_entry(entry *a, entry *b){
     entry tmp;
     tmp = *a;
     *a = *b;
     *b = tmp;
 }
 
-int sort_quick_partition(entry* entries, int pivot, int start, int end){
+/* Auxliary function for sort_quick to divide and conquer quicksort*/
+int sort_quick_partition(entry* entryArr, int pivot, int start, int end){
     int i, j;
-    swap_entries(&entries[pivot], &entries[end]);
+    swap_entry(&entryArr[pivot], &entryArr[end]);
     j = start;
     for (i = start; i < end; i++)
-        if (entries[i].views > entries[pivot].views || (
-                    entries[i].views == entries[pivot].views && 
-                    strcmp(entries[i].url, entries[pivot].url) == -1
+        if (entryArr[i].views > entryArr[pivot].views || (
+                    entryArr[i].views == entryArr[pivot].views && 
+                    strcmp(entryArr[i].url, entryArr[pivot].url) == -1
                     )
            ){
-            swap_entries(&entries[i], &entries[j]);
+            swap_entry(&entryArr[i], &entryArr[j]);
             j++;
         }
-    swap_entries(&entries[j], &entries[end]);
+    swap_entry(&entryArr[j], &entryArr[end]);
     return j;
 }
 
-void sort_quick_aux(entry* entries, int start, int end){
+/* Recursive quicksort */
+void sort_quick(entry* entryArr, int start, int end){
     int pivot;
     if (start < end){
         /* Improve pivot */
         pivot = end;
-        pivot = sort_quick_partition(entries, pivot, start, end);
-        sort_quick_aux(entries, start, pivot - 1);
-        sort_quick_aux(entries, pivot + 1, end);
+        pivot = sort_quick_partition(entryArr, pivot, start, end);
+        sort_quick(entryArr, start, pivot - 1);
+        sort_quick(entryArr, pivot + 1, end);
     }
 }
 
-void sort_quick(entry* entries, int entriesNum){
-    sort_quick_aux(entries, 0, entriesNum - 1);
-}
-
-void sort_shell(entry* entries, int entriesNum){
+/* Shell sort */
+void sort_shell(entry* entryArr, int entryNum){
     int i, j, h;
     entry tmp;
-    for (h = 1; h < entriesNum; h = h * 3 + 1);
+    for (h = 1; h < entryNum; h = h * 3 + 1);
     while (h > 0){
         h = (h - 1) / 3;
-        for (i = h; i < entriesNum; i++){
-            tmp = entries[i];
+        for (i = h; i < entryNum; i++){
+            tmp = entryArr[i];
             j = i;
             while (j >= h && (
-                        entries[j - h].views < tmp.views || (
-                            entries[j - h].views == tmp.views &&
-                            strcmp(entries[j - h].url, tmp.url) == 1
+                        entryArr[j - h].views < tmp.views || (
+                            entryArr[j - h].views == tmp.views &&
+                            strcmp(entryArr[j - h].url, tmp.url) == 1
                             )
                         )
                   ){
-                entries[j] = entries[j - h];
+                entryArr[j] = entryArr[j - h];
                 j -= h;
             }
-            entries[j] = tmp;
+            entryArr[j] = tmp;
         }
     }
 }
 
-
+/* Take the string of a round, sort, and write it to a file */
 void round_qsort(round *roundUnsrt, int roundCur){
-    entry *entriesDec;
-    FILE *roundSrt;
+    entry *entryParsed;
+    FILE *roundFile;
     char roundName[10];
-    int entriesNum, i;
+    int entryNum, i;
 
     /* Parsing the round string */
-    entriesNum = 1 + str_numchar(roundUnsrt->str, '\n');
-    entriesDec = (entry*) malloc (entriesNum * sizeof(entry));
-    entriesDec[0].url = strtok(roundUnsrt->str, " \n"); 
-    entriesDec[0].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
-    for (i = 1; i < entriesNum; i++){
-        entriesDec[i].url = strtok(NULL, " \n"); 
-        entriesDec[i].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
+    entryNum = 1 + str_numchar(roundUnsrt->str, '\n');
+    entryParsed = (entry*) malloc (entryNum * sizeof(entry));
+    entryParsed[0].url = strtok(roundUnsrt->str, " \n"); 
+    entryParsed[0].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
+    for (i = 1; i < entryNum; i++){
+        entryParsed[i].url = strtok(NULL, " \n"); 
+        entryParsed[i].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
     }
 
-    sort_quick(entriesDec, entriesNum);
-    /* Round filename is Rod_(Current Round Number) */
-    sprintf(roundName, "Rod_%i", roundCur);
-    roundSrt = fopen(roundName, "w");
-    for (i = 0; i < entriesNum; i++)
-        fprintf(roundSrt, "%s %i\n", entriesDec[i].url, entriesDec[i].views);
-    fclose(roundSrt);
+    sort_quick(entryParsed, 0, entryNum - 1);
+
+    /* Create file to store entries for each round */
+    /* Round filename is R_(Current Round Number) */
+    sprintf(roundName, "R_%i", roundCur);
+    roundFile = fopen(roundName, "w");
+    for (i = 0; i < entryNum; i++)
+        fprintf(roundFile, "%s %i\n", entryParsed[i].url, entryParsed[i].views);
+    fclose(roundFile);
 }
 
-/* Split the input file into multiple files. */
-int file_rounds_split(FILE *input, int entriesMax, int entryLen) {
+/* Split the input file into multiple sorted files. */
+int file_rounds_split(FILE *input, int entryMax, int entryLen) {
     round *roundUnsrt;
     int i, roundNum, entryEnd;
     unsigned long inputLen;
 
     inputLen = file_len(input);
-    roundNum = ceil((double) inputLen / (entryLen * entriesMax));
+    roundNum = ceil((double) inputLen / (entryLen * entryMax));
     roundUnsrt = (round*) malloc (roundNum * sizeof(round));
 
     for (i = 0; i < roundNum; i++){
-        roundUnsrt[i].str = (char*) malloc ((entriesMax * entryLen + 1) * sizeof(char));
-        roundUnsrt[i].len = entryLen * entriesMax;
+        roundUnsrt[i].str = (char*) malloc ((entryMax * entryLen + 1) * sizeof(char));
+        roundUnsrt[i].len = entryLen * entryMax;
         fread(roundUnsrt[i].str, roundUnsrt[i].len, sizeof(char), input);
 
         /* Fix the round when it cuts off an entry to make it go in the next round. */
@@ -144,22 +147,29 @@ int file_rounds_split(FILE *input, int entriesMax, int entryLen) {
         roundUnsrt[i].len = entryEnd;
         roundUnsrt[i].str[roundUnsrt[i].len] = '\0';
 
-        printf("\n###\n");
-        printf("%i %i\n%s", roundUnsrt[i].len, strlen(roundUnsrt[i].str), roundUnsrt[i].str);
-
-
-        /*sort round*/
         round_qsort(&roundUnsrt[i], i);
-
-        /*
-        for (i = 0; i < 9; i++)
-            printf("%s::%i\n", entriesDec[i].url, entriesDec[i].views);
-            */
-
-        /*open round */
-        /*write round */
-        /*close round */
         /* FREE ROUND MEMORY LATER */
     }
     return roundNum;
+}
+
+void file_rounds_intersperse(FILE *output, int roundNum, int entryLen){
+    int i;
+    char roundName[10];
+    FILE **roundFile;
+    entry *entryQueue;
+    roundFile = (FILE**) malloc (roundNum * sizeof(FILE*));
+    entryQueue = (entry*) malloc (roundNum * sizeof(entry));
+    for (i = 0; i < roundNum; i++){
+        sprintf(roundName, "R_%i", i);
+        roundFile[i] = fopen (roundName, "r");
+        assert(roundFile[i] != NULL);
+        entryQueue[i].url = (char*) malloc (entryLen * sizeof(char));
+        fscanf(roundFile[i], "%s %i\n", entryQueue[i].url, &entryQueue[i].views);
+    }
+
+    for (i = 0; i < roundNum; i++)
+        printf("%s %i\n", entryQueue[i].url, entryQueue[i].views);
+
+    fprintf(output, "REMOVE ME LATER");
 }

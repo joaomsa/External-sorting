@@ -2,25 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <assert.h>
 #include "exsort.c"
 #define INPUT "test.txt"
-#define OUTPUT empty
-#define ENTRIESMAX 1
-#define ENTRYLEN 103
+#define OUTPUT "testS.txt"
+#define ENTRYMAX 1
+#define ENTRYLEN 70
 
 int main(){
-    FILE *input;
+    FILE *input, *output;
     input = fopen (INPUT, "r");
-    assert (input != NULL);
+    output = fopen (OUTPUT, "w");
 
-    int roundNum = file_rounds_split(input, ENTRIESMAX, ENTRYLEN);
-    /* remove later */
-    while(roundNum)
-        roundNum = 0;
+    int roundNum;
+    roundNum = file_rounds_split(input, ENTRYMAX, ENTRYLEN);
 
-    /* intersperse 
-     * Write to final file
+    /* intersperse */
+    file_rounds_intersperse(output, roundNum, ENTRYLEN);
+
+    /* Write to final file
      * Delete rounds */
     return 0;
 }
