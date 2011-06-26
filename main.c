@@ -6,7 +6,7 @@
 #include "exsort.c"
 #define INPUT "test.txt"
 #define OUTPUT empty
-#define ENTRIESMAX 4
+#define ENTRIESMAX 1
 #define ENTRYLEN 103
 
 int main(){
@@ -18,16 +18,6 @@ int main(){
     /* remove later */
     while(roundNum)
         roundNum = 0;
-
-    /*
-       int entriesTotal
-       entriesTotal = str_numchar(unsortedInputStr, '\n');
-
-       char *url, *views;
-       url = strtok(unsortedInputStr, " \n");
-       views = strtok(NULL, " \n");
-       printf("%s %i", url, atoi(views));
-       */
 
     /* intersperse 
      * Write to final file
