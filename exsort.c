@@ -12,6 +12,7 @@ typedef struct round{
 typedef struct entry{
     char *url;
     int views;
+    int round;
 } entry;
 
 /* Discover file's filesize */
@@ -21,7 +22,7 @@ unsigned long file_len(FILE* file){
     start = ftell(file);
     fseek(file, 0, SEEK_END);
     len = ftell(file);
-    fseek(file, 0, start);
+    fseek(file, start, SEEK_SET);
     return len;
 }
 
@@ -36,10 +37,10 @@ unsigned long str_numchar(char *str, char key){
 
 /* Swap the contents of two entries */
 void swap_entry(entry *a, entry *b){
-    entry tmp;
-    tmp = *a;
-    *a = *b;
-    *b = tmp;
+        entry tmp;
+        tmp = *a;
+        *a = *b;
+        *b = tmp;
 }
 
 /* Auxliary function for sort_quick to divide and conquer quicksort*/
@@ -152,24 +153,93 @@ int file_rounds_split(FILE *input, int entryMax, int entryLen) {
     }
     return roundNum;
 }
+void queue_heapify(entry *heap, int heapSize, int father){
+    int left = father * 2 + 1;
+    int right = father * 2 + 2;
+    int largest;
+    if (left < heapSize && (
+                heap[left].views > heap[father].views || (
+                    heap[left].views == heap[father].views && 
+                    strcmp (heap[left].url, heap[father].url) == -1
+                    )
+                )
+       )
+        largest = left;
+    else
+        largest = father;
+    if (right < heapSize && (
+                heap[right].views > heap[father].views || (
+                    heap[right].views == heap[father].views && 
+                    strcmp (heap[right].url, heap[father].url) == -1
+                    )
+                )
+       )
+        largest = right;
+    if (largest != father){
+        swap_entry(&heap[largest], &heap[father]); 
+        queue_heapify(heap, heapSize, largest);
+    }
+}
+
+void queue_build(entry *heap, int heapSize){
+    int i;
+    for (i = (heapSize - 1) / 2; i >= 0; i--)
+        queue_heapify(heap, heapSize, i);
+}
+
+entry queue_pop(entry *heap, int *heapSize){
+    entry largest;
+    largest = heap[0];
+    heap[0] = heap[(*heapSize)-- - 1];
+    queue_heapify(heap, *heapSize, 0);
+    return largest;
+}
+
+void queue_push(entry *heap, int *heapSize, entry insert){
+    int i;
+    heap[*heapSize] = insert;
+    i = *heapSize;
+    (*heapSize)++;
+    while (i > 0 && (
+                heap[i / 2].views < heap[i].views || (
+                    heap[i / 2].views == heap[i].views && 
+                    strcmp (heap[i / 2].url, heap[i].url) == 1
+                    )
+                )
+          ){
+        swap_entry(&heap[i], &heap[i / 2]);
+        i = i / 2;
+    }
+}
 
 void file_rounds_intersperse(FILE *output, int roundNum, int entryLen){
-    int i;
+    int i, queueSize;
     char roundName[10];
     FILE **roundFile;
-    entry *entryQueue;
+    entry *entryQueue, entryFirst, entryInsert;
     roundFile = (FILE**) malloc (roundNum * sizeof(FILE*));
     entryQueue = (entry*) malloc (roundNum * sizeof(entry));
+    queueSize = roundNum;
     for (i = 0; i < roundNum; i++){
         sprintf(roundName, "R_%i", i);
         roundFile[i] = fopen (roundName, "r");
-        assert(roundFile[i] != NULL);
+        entryQueue[i].round = i;
         entryQueue[i].url = (char*) malloc (entryLen * sizeof(char));
         fscanf(roundFile[i], "%s %i\n", entryQueue[i].url, &entryQueue[i].views);
     }
+    queue_build(entryQueue, queueSize);
 
-    for (i = 0; i < roundNum; i++)
-        printf("%s %i\n", entryQueue[i].url, entryQueue[i].views);
+    for(i = 0; i < 9; i++){
+        entryFirst = queue_pop(entryQueue, &queueSize);
+        fprintf(output, "%s %i\n", entryFirst.url, entryFirst.views);
+        fprintf(stdout, "%s %i\n", entryFirst.url, entryFirst.views);
+        free(entryFirst.url);
 
-    fprintf(output, "REMOVE ME LATER");
+        if ((unsigned) ftell(roundFile[entryFirst.round]) != file_len(roundFile[entryFirst.round])){ 
+            entryInsert.round = entryFirst.round;
+            entryInsert.url = (char*) malloc (entryLen * sizeof(char));
+            fscanf(roundFile[entryInsert.round], "%s %i\n", entryInsert.url, &entryInsert.views);
+            queue_push(entryQueue, &queueSize, entryInsert);
+        }
+    }
 }
