@@ -6,7 +6,7 @@
 #define INPUT "test.txt"
 #define OUTPUT "testS.txt"
 #define ENTRYMAX 1
-#define ENTRYLEN 70
+#define ENTRYLEN 40
 
 int main(){
     FILE *input, *output;

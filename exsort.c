@@ -157,23 +157,11 @@ void queue_heapify(entry *heap, int heapSize, int father){
     int left = father * 2 + 1;
     int right = father * 2 + 2;
     int largest;
-    if (left < heapSize && (
-                heap[left].views > heap[father].views || (
-                    heap[left].views == heap[father].views && 
-                    strcmp (heap[left].url, heap[father].url) == -1
-                    )
-                )
-       )
+    if (left < heapSize && ( (heap[left].views > heap[father].views) || ( (heap[left].views == heap[father].views) && (strcmp(heap[left].url, heap[father].url) == -1))))
         largest = left;
     else
         largest = father;
-    if (right < heapSize && (
-                heap[right].views > heap[father].views || (
-                    heap[right].views == heap[father].views && 
-                    strcmp (heap[right].url, heap[father].url) == -1
-                    )
-                )
-       )
+    if (right < heapSize && ( (heap[right].views > heap[largest].views) || ( (heap[right].views == heap[largest].views) && (strcmp(heap[right].url, heap[largest].url) == -1))))
         largest = right;
     if (largest != father){
         swap_entry(&heap[largest], &heap[father]); 
@@ -183,7 +171,7 @@ void queue_heapify(entry *heap, int heapSize, int father){
 
 void queue_build(entry *heap, int heapSize){
     int i;
-    for (i = (heapSize - 1) / 2; i >= 0; i--)
+    for (floor(i = (heapSize - 1) / 2); i >= 0; i--)
         queue_heapify(heap, heapSize, i);
 }
 
