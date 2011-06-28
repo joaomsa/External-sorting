@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 #ifndef EXSORT_H
 #define EXSORT_H
 #include "exsort.h"
@@ -11,7 +12,7 @@
  * [100] Url [1] Space [9] Page views [1] Newline */
 #define ENTRYLEN 111
 /* Threshold to use shell sort instead of quick */
-#define SHELLSTART 1
+#define SHELLSTART 0
 /* Maximum filename for each round */
 #define MAXFILENAME 20
 
@@ -39,7 +40,7 @@ unsigned long str_numchar(char *str, char key){
 }
 
 /* Swap the contents of two entries */
-void swap_entry(entry_t *a, entry_t *b){
+void entry_swap(entry_t *a, entry_t *b){
     entry_t tmp;
 
     tmp = *a;
@@ -77,7 +78,7 @@ void sort_shell(entry_t* entryArr, int start, int end){
 int sort_quick_partition(entry_t* entryArr, int pivot, int start, int end){
     int i, j;
 
-    swap_entry(&entryArr[pivot], &entryArr[end]);
+    entry_swap(&entryArr[pivot], &entryArr[end]);
     j = start;
     for (i = start; i < end; i++)
         if (entryArr[i].views > entryArr[pivot].views || (
@@ -85,89 +86,73 @@ int sort_quick_partition(entry_t* entryArr, int pivot, int start, int end){
                     strcmp(entryArr[i].url, entryArr[pivot].url) == -1
                     )
            ){
-            swap_entry(&entryArr[i], &entryArr[j]);
+            entry_swap(&entryArr[i], &entryArr[j]);
             j++;
         }
-    swap_entry(&entryArr[j], &entryArr[end]);
+    entry_swap(&entryArr[j], &entryArr[end]);
     return j;
 }
 
-/* Recursive quicksort uses shell sort if array below size defined by SHELLSTART*/
+/* Recursive quicksort uses shell sort if array below size defined by SHELLSTART */
 void sort_quick(entry_t* entryArr, int start, int end){
     int pivot;
 
     if (start < end){
-        if (end - start < SHELLSTART)
-            sort_shell(entryArr, start, end);
-        else {
-            pivot = end;
-            pivot = sort_quick_partition(entryArr, pivot, start, end);
-            sort_quick(entryArr, start, pivot - 1);
-            sort_quick(entryArr, pivot + 1, end);
-        }
+        pivot = end;
+        pivot = sort_quick_partition(entryArr, pivot, start, end);
+        sort_quick(entryArr, start, pivot - 1);
+        sort_quick(entryArr, pivot + 1, end);
     }
 }
 
-/* Take the string of a round, sort, and write it to a file */
-void round_qsort(round_t *roundUnsrt, int roundCur){
-    entry_t *entryParsed;
+/* Take the sorted round, and write it to a file */
+void round_write_file(round_t *round, int roundCur){
     FILE *roundFile;
     char roundName[MAXFILENAME];
-    int entryNum, i;
-
-    /* Parsing the round string */
-    entryNum = 1 + str_numchar(roundUnsrt->str, '\n');
-    entryParsed = (entry_t*) malloc (entryNum * sizeof(entry_t));
-    entryParsed[0].url = strtok(roundUnsrt->str, " \n"); 
-    entryParsed[0].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
-    for (i = 1; i < entryNum; i++){
-        entryParsed[i].url = strtok(NULL, " \n"); 
-        entryParsed[i].views = (int) strtol(strtok(NULL, " \n"), NULL, 10);
-    }
-
-    /* Quick sort all the entries */
-    sort_quick(entryParsed, 0, entryNum - 1);
+    int i;
 
     /* Create file to store entries for each round */
     /* Round filename is rodada-(Current Round Number).txt */
     sprintf(roundName, "rodada-%i.txt", roundCur);
     roundFile = fopen(roundName, "w");
-    for (i = 0; i < entryNum; i++)
-        fprintf(roundFile, "%s %i\n", entryParsed[i].url, entryParsed[i].views);
-
-    free(entryParsed);
+    for (i = 0; i < round->entryNum; i++){
+        fprintf(roundFile, "%s %i\n", round->entry[i].url, round->entry[i].views);
+    }
     fclose(roundFile);
 }
 
-/* Split the input file into multiple sorted files. */
+/* Split the input file into multiple sorted files */
 int round_split(FILE *input, int entryMax){
-    round_t *roundUnsrt;
-    int i, roundNum, entryEnd;
-    unsigned long inputLen;
-    unsigned long end;
+    int readNum, i;
+    round_t round;
 
-    inputLen = file_len(input);
-    roundNum = (double) inputLen / (ENTRYLEN * entryMax) + 1;
-    roundUnsrt = (round_t*) malloc (roundNum * sizeof(round_t));
-
-    for (i = 0; i < roundNum; i++){
-        roundUnsrt[i].str = (char*) malloc ((entryMax * ENTRYLEN + 1) * sizeof(char));
-        roundUnsrt[i].len = ENTRYLEN * entryMax;
-        fread(roundUnsrt[i].str, roundUnsrt[i].len, sizeof(char), input);
-        end = inputLen >= (unsigned) roundUnsrt[i].len ? (unsigned) roundUnsrt[i].len : inputLen;
-        roundUnsrt[i].str[end + 1] = '\0';
-        entryEnd = strrchr(roundUnsrt[i].str, '\n') - roundUnsrt[i].str;
-
-        fseek(input, (entryEnd + 1) - roundUnsrt[i].len, SEEK_CUR);
-        roundUnsrt[i].len = entryEnd;
-        roundUnsrt[i].str[roundUnsrt[i].len] = '\0';
-        inputLen -= roundUnsrt[i].len;
-
-        round_qsort(&roundUnsrt[i], i);
-        free(roundUnsrt[i].str);
+    round.num = 0;
+    round.entry = (entry_t*) malloc (entryMax * sizeof(entry_t));
+    assert(round.entry != NULL);
+    for (i = 0; i < entryMax; i++){
+        round.entry[i].url = (char*) malloc (ENTRYLEN * sizeof(char));
+        assert(round.entry[i].url != NULL);
     }
-    free(roundUnsrt);
-    return roundNum;
+
+    while (!feof(input)){
+        for (round.entryNum = 0; round.entryNum < entryMax; round.entryNum++){
+            readNum = fscanf(input, "%s %i\n", round.entry[round.entryNum].url, &round.entry[round.entryNum].views);
+            if (readNum != 2)
+                break;
+        }
+
+        /* Quick sort all the entries */
+        sort_quick(round.entry, 0, round.entryNum - 1);
+
+        round_write_file(&round, round.num);
+        round.num++;
+    }
+
+    for (i = 0; i < entryMax; i++)
+        free(round.entry[i].url);
+    free(round.entry);
+    fclose(input);
+    return round.num;
 }
 
 /* Function to maintain heap property */
@@ -193,7 +178,7 @@ void queue_heapify(entry_t *heap, int heapSize, int father){
        )
         largest = right;
     if (largest != father){
-        swap_entry(&heap[largest], &heap[father]); 
+        entry_swap(&heap[largest], &heap[father]); 
         queue_heapify(heap, heapSize, largest);
     }
 }
@@ -230,13 +215,13 @@ void queue_push(entry_t *heap, int *heapSize, entry_t insert){
                     )
                 )
           ){
-        swap_entry(&heap[i], &heap[i / 2]);
+        entry_swap(&heap[i], &heap[i / 2]);
         i = i / 2;
     }
 }
 
-/* Reopen all the rounds generated and intersperse them into a single sorted output */
-void round_intersperse(FILE *output, int roundNum){
+/* Reopen all the rounds generated and merge them into a single sorted output */
+void round_merge(FILE *output, int roundNum){
     int i, queueSize;
     char roundName[MAXFILENAME];
     FILE **roundFile;
@@ -263,7 +248,7 @@ void round_intersperse(FILE *output, int roundNum){
         fprintf(output, "%s %i\n", entryFirst.url, entryFirst.views);
         free(entryFirst.url);
 
-        if ((unsigned) ftell(roundFile[entryFirst.round]) != file_len(roundFile[entryFirst.round])){ 
+        if (!feof(roundFile[entryFirst.round])){ 
             entryInsert.round = entryFirst.round;
             entryInsert.url = (char*) malloc (ENTRYLEN * sizeof(char));
             fscanf(roundFile[entryInsert.round], "%s %i\n", entryInsert.url, &entryInsert.views);
@@ -275,7 +260,9 @@ void round_intersperse(FILE *output, int roundNum){
     for (i = 0; i < roundNum; i++){
         fclose(roundFile[i]);
         sprintf(roundName, "rodada-%i.txt", i);
-        remove(roundName);
+        /*
+           remove(roundName);
+           */
     }
     free(roundFile);
     free(entryQueue);

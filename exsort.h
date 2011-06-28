@@ -3,18 +3,18 @@
 #include <string.h>
 #include <time.h>
 
-/* Stores contents and info about each round split off from input */
-typedef struct round_t{
-    char* str;
-    int len;
-} round_t;
-
 /* Stores contents and info about each url entry from input*/
 typedef struct entry_t{
     char *url;
     int views;
     int round;
 } entry_t;
+
+/* Stores contents and info about each round split off from input */
+typedef struct round_t{
+    entry_t *entry;
+    int num, entryNum;
+} round_t;
 
 /* Discover file's filesize */
 unsigned long file_len(FILE* file);
@@ -23,7 +23,7 @@ unsigned long file_len(FILE* file);
 unsigned long str_numchar(char *str, char key);
 
 /* Swap the contents of two entries */
-void swap_entry(entry_t *a, entry_t *b);
+void entry_swap(entry_t *a, entry_t *b);
 
 /* Shell sort */
 void sort_shell(entry_t* entryArr, int start, int end);
@@ -34,8 +34,8 @@ int sort_quick_partition(entry_t* entryArr, int pivot, int start, int end);
 /* Recursive quicksort uses shell sort if array below size defined by SHELLSTART*/
 void sort_quick(entry_t* entryArr, int start, int end);
 
-/* Take the string of a round, sort, and write it to a file */
-void round_qsort(round_t *roundUnsrt, int roundCur);
+/* Take the round and write it to a file */
+void round_write_file(round_t *roundUnsrt, int roundCur);
 
 /* Split the input file into multiple sorted files. */
 int round_split(FILE *input, int entryMax);
@@ -52,5 +52,5 @@ entry_t queue_pop(entry_t *heap, int *heapSize);
 /* Insert an element into the queue and reorder */
 void queue_push(entry_t *heap, int *heapSize, entry_t insert);
 
-/* Reopen all the rounds generated and intersperse them into a single sorted output */
-void round_intersperse(FILE *output, int roundNum);
+/* Reopen all the rounds generated and merge them into a single sorted output */
+void round_merge(FILE *output, int roundNum);

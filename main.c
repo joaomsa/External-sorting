@@ -23,8 +23,8 @@ int main(int argc, char *argv[]){
     /* Split and sort rounds */
     roundNum = round_split(input, strtol(ENTRYMAX, NULL, 10));
 
-    /* Intersperse rounds and write to sorted output*/
-    round_intersperse(output, roundNum);
+    /* Merge rounds and write to sorted output*/
+    round_merge(output, roundNum);
 
     return 0;
 }
