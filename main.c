@@ -2,24 +2,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "exsort.c"
-#define INPUT "test.txt"
-#define OUTPUT "testS.txt"
-#define ENTRYMAX 1
-#define ENTRYLEN 40
+#include <time.h>
+#ifndef EXSORT_H
+#define EXSORT_H
+#include "exsort.h"
+#endif
 
-int main(){
+#define INPUT argv[1]
+#define OUTPUT argv[2]
+#define ENTRYMAX argv[3]
+
+int main(int argc, char *argv[]){
     FILE *input, *output;
-    input = fopen (INPUT, "r");
-    output = fopen (OUTPUT, "w");
-
     int roundNum;
-    roundNum = file_rounds_split(input, ENTRYMAX, ENTRYLEN);
+    if (argc != 4)
+        printf("Missing parameters\n");
 
-    /* intersperse */
-    file_rounds_intersperse(output, roundNum, ENTRYLEN);
+    input = fopen(INPUT, "rb");
+    output = fopen(OUTPUT, "w");
 
-    /* Write to final file
-     * Delete rounds */
+    /* Split and sort rounds */
+    roundNum = file_rounds_split(input, strtol(ENTRYMAX, NULL, 10));
+
+    /* Intersperse rounds and write to sorted output*/
+    file_rounds_intersperse(output, roundNum);
+
     return 0;
 }
