@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
 #ifndef EXSORT_H
 #define EXSORT_H
@@ -12,7 +11,7 @@
  * [100] Url [1] Space [9] Page views [1] Newline */
 #define ENTRYLEN 111
 /* Threshold to use shell sort instead of quick */
-#define SHELLSTART 20
+#define SHELLSTART 1
 /* Maximum filename for each round */
 #define MAXFILENAME 20
 
@@ -97,14 +96,15 @@ int sort_quick_partition(entry_t* entryArr, int pivot, int start, int end){
 void sort_quick(entry_t* entryArr, int start, int end){
     int pivot;
 
-    if (end - start < SHELLSTART){
-        sort_shell(entryArr, start, end);
-    }
-    else if (start < end){
-        pivot = end;
-        pivot = sort_quick_partition(entryArr, pivot, start, end);
-        sort_quick(entryArr, start, pivot - 1);
-        sort_quick(entryArr, pivot + 1, end);
+    if (start < end){
+        if (end - start < SHELLSTART)
+            sort_shell(entryArr, start, end);
+        else {
+            pivot = end;
+            pivot = sort_quick_partition(entryArr, pivot, start, end);
+            sort_quick(entryArr, start, pivot - 1);
+            sort_quick(entryArr, pivot + 1, end);
+        }
     }
 }
 
@@ -134,18 +134,20 @@ void round_qsort(round_t *roundUnsrt, int roundCur){
     roundFile = fopen(roundName, "w");
     for (i = 0; i < entryNum; i++)
         fprintf(roundFile, "%s %i\n", entryParsed[i].url, entryParsed[i].views);
+
+    free(entryParsed);
     fclose(roundFile);
 }
 
 /* Split the input file into multiple sorted files. */
-int file_rounds_split(FILE *input, int entryMax){
+int round_split(FILE *input, int entryMax){
     round_t *roundUnsrt;
     int i, roundNum, entryEnd;
     unsigned long inputLen;
     unsigned long end;
 
     inputLen = file_len(input);
-    roundNum = ceil((double) inputLen / (ENTRYLEN * entryMax));
+    roundNum = (double) inputLen / (ENTRYLEN * entryMax) + 1;
     roundUnsrt = (round_t*) malloc (roundNum * sizeof(round_t));
 
     for (i = 0; i < roundNum; i++){
@@ -154,25 +156,17 @@ int file_rounds_split(FILE *input, int entryMax){
         fread(roundUnsrt[i].str, roundUnsrt[i].len, sizeof(char), input);
         end = inputLen >= (unsigned) roundUnsrt[i].len ? (unsigned) roundUnsrt[i].len : inputLen;
         roundUnsrt[i].str[end + 1] = '\0';
-        /* Fix the round when it cuts off an entry_t to make it go in the next round. */
-        /*
-           for (entryEnd = roundUnsrt[i].len; roundUnsrt[i].str[entryEnd] != '\n'; entryEnd--);
-           fseek(input, (entryEnd + 1) - roundUnsrt[i].len, SEEK_CUR);
-           roundUnsrt[i].len = entryEnd;
-           printf("**%i**", entryEnd);
-           roundUnsrt[i].str[roundUnsrt[i].len] = '\0';
-           */
-        entryEnd = strrchr(roundUnsrt[i].str, '\n') - &roundUnsrt[i].str[0];
+        entryEnd = strrchr(roundUnsrt[i].str, '\n') - roundUnsrt[i].str;
 
         fseek(input, (entryEnd + 1) - roundUnsrt[i].len, SEEK_CUR);
         roundUnsrt[i].len = entryEnd;
         roundUnsrt[i].str[roundUnsrt[i].len] = '\0';
         inputLen -= roundUnsrt[i].len;
 
-        printf("%s\n\n", roundUnsrt[i].str);
         round_qsort(&roundUnsrt[i], i);
-        /* FREE ROUND MEMORY LATER */
+        free(roundUnsrt[i].str);
     }
+    free(roundUnsrt);
     return roundNum;
 }
 
@@ -208,7 +202,7 @@ void queue_heapify(entry_t *heap, int heapSize, int father){
 void queue_build(entry_t *heap, int heapSize){
     int i;
 
-    for (floor(i = (heapSize - 1) / 2); i >= 0; i--)
+    for (i = ((double) heapSize - 1) / 2; i >= 0; i--)
         queue_heapify(heap, heapSize, i);
 }
 
@@ -242,7 +236,7 @@ void queue_push(entry_t *heap, int *heapSize, entry_t insert){
 }
 
 /* Reopen all the rounds generated and intersperse them into a single sorted output */
-void file_rounds_intersperse(FILE *output, int roundNum){
+void round_intersperse(FILE *output, int roundNum){
     int i, queueSize;
     char roundName[MAXFILENAME];
     FILE **roundFile;
@@ -264,11 +258,9 @@ void file_rounds_intersperse(FILE *output, int roundNum){
 
     /* Until queue is empty write the highest priority entry and insert into queue next element from
      * the highest entries original round. */
-    printf("\nSORTED\n");
     while (queueSize > 0){
         entryFirst = queue_pop(entryQueue, &queueSize);
         fprintf(output, "%s %i\n", entryFirst.url, entryFirst.views);
-        fprintf(stdout, "%s %i\n", entryFirst.url, entryFirst.views);
         free(entryFirst.url);
 
         if ((unsigned) ftell(roundFile[entryFirst.round]) != file_len(roundFile[entryFirst.round])){ 
@@ -285,4 +277,6 @@ void file_rounds_intersperse(FILE *output, int roundNum){
         sprintf(roundName, "rodada-%i.txt", i);
         remove(roundName);
     }
+    free(roundFile);
+    free(entryQueue);
 }

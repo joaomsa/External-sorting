@@ -1,16 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-
-/* Maximum length of an entry 
- * [100] Url [1] Space [9] Page views [1] Newline */
-#define ENTRYLEN 111
-/* Threshold to use shell sort instead of quick */
-#define SHELLSTART 20
-/* Maximum filename for each round */
-#define MAXFILENAME 20
 
 /* Stores contents and info about each round split off from input */
 typedef struct round_t{
@@ -47,7 +38,7 @@ void sort_quick(entry_t* entryArr, int start, int end);
 void round_qsort(round_t *roundUnsrt, int roundCur);
 
 /* Split the input file into multiple sorted files. */
-int file_rounds_split(FILE *input, int entryMax);
+int round_split(FILE *input, int entryMax);
 
 /* Function to maintain heap property */
 void queue_heapify(entry_t *heap, int heapSize, int father);
@@ -62,4 +53,4 @@ entry_t queue_pop(entry_t *heap, int *heapSize);
 void queue_push(entry_t *heap, int *heapSize, entry_t insert);
 
 /* Reopen all the rounds generated and intersperse them into a single sorted output */
-void file_rounds_intersperse(FILE *output, int roundNum);
+void round_intersperse(FILE *output, int roundNum);
