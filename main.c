@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #ifndef EXSORT_H
 #define EXSORT_H
 #include "exsort.h"
