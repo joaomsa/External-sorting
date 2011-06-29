@@ -1,0 +1,199 @@
+\documentclass[a4paper, 11pt]{article}
+\usepackage[utf8x]{inputenc} \usepackage[brazil]{babel}
+\usepackage[dvipdfm, a4paper, top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\begin{document}
+\title{Trabalho Pratico II - Compressor de Arquivos}
+\author{Joao Paulo Mendes de Sa}
+\date{}
+\maketitle
+
+\section{Introdução}
+Para quantidades enormes de dados os métodos tradicionais de ordenação não são suficientemente adequados. Ordenação em memoria externa é requerida quando todos os dados a serem ordenados não cabem dentro da memoria principal disponível da maquina. Em vez eles tem que permanecer na memoria externa, o hard drive. Para realizar a ordenação desses dados é necessária uma estrategia de ordenar/intercalar onde na primeira etapa os dados são quebrados em pedaços e cada pedaço e ordenado independente dos outros. Em seguida, na segunda etapa, os pedaços ordenados são juntados para formar um único arquivo ordenado. De modo geral o algorítimo é:
+
+\begin{enumerate}
+\item Quebra o arquivo em subarquivos que são capazes de caber dentro da memoria disponível.
+\item Enquanto não atingir o fim do arquivo:
+\begin{enumerate}
+\item Carrega na memoria o numero de items que couber.
+\item Ordena o conteúdo da memoria.
+\item Escreva o conteúdo ordenado para um subarquivo arquivo.
+\item Armazene o arquivo ordenado.
+\end{enumerate}
+\item Reabra todos os arquivos gerados.
+\item Carrega na memoria o primeiro item de cada subarquivo.
+\item Crie uma fila de prioridades esses items.
+\item Enquanto a fila não ficar vazia:
+\begin{enumerate}
+\item Retire e escreva no arquivo de saída o primeiro item da fila.
+\item Adicione a fila o próximo item do subarquivo onde o ultimo retirado originou.
+\end{enumerate}
+\item Delete todos os subarquivos intermediários gerados.
+\end{enumerate}
+
+\section{Implementação}
+\subsection{Estrutura de Dados}
+Foi criado um tipo abstrato de dados para processar as rodadas gerados, cada rodada composta por um TAD de items que armazenavam cada url e pageviews, e outro para manter a fila de prioridades composta de items.
+
+Para implementar a fila de prioridade foi usado um heap. O TAD usado criava e manipulava um heap para facilitar as operações de remoção e inserção.
+
+\subsection{Funções e Procedimentos}
+\begin{verbatim}
+void entry_swap(entry_t *a, entry_t *b);
+\end{verbatim}
+Troca o conteúdo de dois items.
+
+\begin{verbatim}
+int round_split(FILE *input, int entryMax);
+\end{verbatim}
+Quebra o arquivo em múltiplos pedaços. Ordena eles atraves de um quicksort e finalmente escreve o resultado para um arquivo.
+
+\begin{verbatim}
+void round_write_file(round_t *round, int roundCur);
+\end{verbatim}
+Recebe a rodada ordenada e escreve para um arquivo intermediário.
+
+\begin{verbatim}
+void round_merge(FILE *output, int roundNum);
+\end{verbatim}
+Reabre os subarquivos gerados e intercale eles para gerar as saída final ordenada.
+
+\begin{verbatim}
+void sort_quick(entry_t* entry, int start, int end);
+\end{verbatim}
+Função principal do quicksort. Para casos pequenos usa o Shell sort.
+
+\begin{verbatim}
+int sort_quick_partition(entry_t* entry, int pivot, int start, int end);
+\end{verbatim}
+Função de partição do quick sort para dividir e conquistar.
+
+\begin{verbatim}
+void queue_fix(entry_t *heap, int heapSize, int father);
+\end{verbatim}
+Mantem a ordem do heap.
+
+\begin{verbatim}
+void queue_build(entry_t *heap, int heapSize);
+\end{verbatim}
+A partir de um arranjo desorganizado cria um heap.
+
+\begin{verbatim}
+entry_t queue_pop(entry_t *heap, int *heapSize);
+\end{verbatim}
+Retira e retorna o elemento com maior prioridade da fila.
+
+\begin{verbatim}
+void queue_push(entry_t *heap, int *heapSize, entry_t insert);
+\end{verbatim}
+Insere um elemento mantendo a integridade da fila.
+
+\subsection{Programa Principal}
+O programa principal é divido em trés etapa. 
+\begin{enumerate}
+\item Particionar o arquivo de entrada.
+\item Ordenar os pedaços.
+\item Intercalar os pedaços e produzir a saída. 
+\end{enumerate}
+
+Para quebrar os pedaços e lido um trecho do arquivo que cabe na memoria. Esse trecho é analisado para descobrir o url e pageviews de cada item. 
+
+Esses items são ordenados através do quicksort. Finalmente eles são escritos no subarquivo intermediário.
+
+Para intercalar os pedaços, são reabertos todos subarquivos gerados simultaneamente. É lido e analisado o primeiro item de cada subarquivo para construir a fila de prioridades implementada usando um heap. Ate a fila ficar vazio, são escritos para o arquivo final o item com maior prioridade e adicionado a fila o próximo item do subarquivo de onde o item que acabou de sair foi retirado. No fim os subarquivos são removidos.
+
+\subsection{Organização do Código, Decisões de Implementação e Detalhes Técnicos}
+O código esta dividido em 3 arquivos: exsort.h contem as declarações does TADs e funções, exsort.c as implementações dos TADs e main.c com o programa principal.
+Foi considerado que o tamanho máximo de um url era 100 caracteres para simplificar a implementação e que a ordenação de URLs no caso de empate respeitava a ordem da tabela ASCII. O compilador usado foi GCC 4.6.020110429 no sistema operacional Arch Linux 2.6.39-ARCH. O programa aceita os parametros <arquivo de entrada> <arquivo de saída> <numero máximo de items que cabe na memoria>.
+
+\section{Analise de Complexidade}
+A variável $n$ e definida como o numero de items no arquivo de entrada $x$ como o numero de arquivos gerados dependendo da memoria.
+
+\begin{verbatim}
+void entry_swap(entry_t *a, entry_t *b);
+\end{verbatim}
+Simple troca em $O(1)$.
+
+\begin{verbatim}
+int round_split(FILE *input, int entryMax);
+\end{verbatim}
+Para cada $x$, Le o pedaço do arquivo em $O(n)$, e usa sort\_quick() é $O(nlog(n))$, escreve para um subarquivo em $O(n)$. Logo a complexidade é de $O(xnlog(n))$.
+
+\begin{verbatim}
+void round_write_file(round_t *roundUnsrt, int roundCur);
+\end{verbatim}
+Escreve cada item a um arquivo em $O(n)$.
+
+\begin{verbatim}
+void round_merge(FILE *output, int roundNum);
+\end{verbatim}
+Abre os arquivos em $O(x)$, constrói a file em $O(xlog(x))$ por que o numero de items é limitado pelo numero de arquivos gerados. Para cada item $n$ insere $O(log(n))$ e remove $O(log(n))$ que é $O(nlog(n))$. Como o numero de subarquivos nunca e maior que o numero de items totais a função acaba sendo $O(nlog(n))$.
+
+\begin{verbatim}
+void sort_quick(entry_t* entry, int start, int end);
+\end{verbatim}
+Função recursiva por que chara a partição e duas quicksort's para cada metade da entrada com recorrência de $T(n) = 2T(frac{n}{2}) + O(n)$. Resolvendo essa relação $O(nlog(n))$.
+
+\begin{verbatim}
+int sort_quick_partition(entry_t* entry, int pivot, int start, int end);
+\end{verbatim}
+Percorre todos elementos do uma vez logo $O(n)$.
+
+\begin{verbatim}
+void queue_fix(entry_t *heap, int heapSize, int father);
+\end{verbatim}
+Navega um vetor como uma arvore que acaba sendo em $(Olog(n)$.
+
+\begin{verbatim}
+void queue_build(entry_t *heap, int heapSize);
+\end{verbatim}
+Chama queue\_heapify() para metade de n logo $O(nlog(n))$.
+
+\begin{verbatim}
+entry_t queue_pop(entry_t *heap, int *heapSize);
+\end{verbatim}
+Chama queue\_heapify() uma vez então $O(log(n))$.
+
+\begin{verbatim}
+void queue_push(entry_t *heap, int *heapSize, entry_t insert);
+\end{verbatim}
+Como um queue\_heapify() navega como uma a arvore porem de baixo para cima.
+
+\subsection{Programa principal}
+A complexidade da implementacao de ordenacao externa acabou sendo:
+$$max(O(xnlog(n)), O(nlog(n))) = O(xnlog(n))$$
+$x$ depende diretamente do valor da entrada mais vai ser no máximo igual a $n$ no caso onde o programa gera um arquivo por entidade. O que faz a complexidade ser igual a $O(n^2log(n))$
+
+\section{Testes}
+Para testar a saida do programa foi desenvolvido um script para gerar arquivos com url e pageviews aleatórios usado como entrada. Usando o sort (UNIX) com parâmetros "-k2nr -k1 test.txt" os testes gerados eram ordenados. Para verificar se a saída do programa estava certa foi usado o diff do vim. Para determinar o tempo de execução para cada arquivo foi feito outro script que rodada 10 vezes um arquivo de mesmo tamanho e pegava a media dos tempos de execução. A curva parece com a de $n^2log(n)$ deslocada por uma constante. 
+
+\begin{figure}[!htb]
+\begin{center}
+\input{entryPlot}
+\end{center}
+\caption{Tempo de execução para vários arquivos}
+\end{figure}
+
+Foram feitos também, testes para determinar o impacto do limite de memoria. O tempo de execução parece estar mais ou menos constate. Minha hipótese por isso e que as operações em disco são as que gastam mais tempo. Como independente do limite de entidades que cabem na memoria terão que ser feitas $n$ leituras ao arquivo o tempo de execução não muda muito.
+
+\begin{figure}[!htb]
+\begin{center}
+\input{limitPlot}
+\end{center}
+\caption{Efeito do limite de entidade}
+\end{figure}
+
+\section{Conclusão}
+Eu percebi que o maior gargalo na implementação era as operações que envolviam o disco. Eu pensei em algumas maneiras de melhorar essa porcão do código. Pensei em reduzir a quantidade de leitura ao disco no inicio pegando a maior string que coubesse na memoria e processando ele de uma vez ao invés de ler cada item um por um. Como o limite de URL era 100 caracteres assumi que a memoria máxima dada por esse limite vezes o numero de entidades dado na entrada. Uma consequência disso foi que o numero de items em cada subarquivo variaria para preencher o máximo possível. Na hora do quicksort isso ajudaria por que não seria necessário    fazer varias leituras de arquivos pequenos e a ordenação poderia acontecer diretamente na memoria reduzindo o acesso ao disco. 
+
+Para o quicksort em si, quando ele particiona casos pequenos eu tentei usar o shell sort ao invés de mais chamadas do quicksort que para ter um melhor desempenho em vetores menores, porem em vários testes esse não foi o caso que me levou a retirar esse trecho. Não consegui usar o mesmo método na hora de intercalar pois e necessário ler o topo de cada subarquivo. Neste caso tive que ler cada entrada uma por uma.
+\section{Referencias}
+\begin{itemize} 
+\item Cormen T., Leiserson C., Rivest R., Stein C., Introduction to Algorithms 3rd Edition 2009.
+\item \url{http://en.wikipedia.org/External\_sorting}
+\end{itemize}
+\end{document}
